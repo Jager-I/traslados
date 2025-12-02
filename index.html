@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cronograma de Traslados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- React and Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafc; /* slate-50 */
+      }
+    </style>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // --- Utilidades ---
+      const generateUUID = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+      };
+
+      // --- Iconos SVG ---
+      const IconBoat = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1S13.2 21 14.5 21c2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.9 5.8 2.8 8"/><path d="M10 10V4a2 2 0 0 1 2-2a2 2 0 0 1 2 2v6"/><path d="M14 10l-2-2-2 2"/></svg>
+      );
+      const IconPlus = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      );
+      const IconTrash = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      );
+      const IconUsers = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      );
+      const IconSave = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+      );
+      const IconShare = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+      );
+      const IconClock = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      );
+      const IconX = ({ className }) => (
+         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      );
+
+      // --- Componentes ---
+      
+      const Modal = ({ isOpen, onClose, title, children }) => {
+        if (!isOpen) return null;
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+              <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+                <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <IconX className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                {children}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const EditAssignmentModal = ({ isOpen, onClose, assignment, boatName, onSave }) => {
+        const [passengers, setPassengers] = useState("");
+        const [count, setCount] = useState(0);
+
+        useEffect(() => {
+          if (isOpen && assignment) {
+            setPassengers(assignment.passengers || "");
+            setCount(assignment.count || 0);
+          }
+        }, [isOpen, assignment]);
+
+        const handleSave = () => {
+          onSave({ ...assignment, passengers, count });
+          onClose();
+        };
+
+        return (
+          <Modal isOpen={isOpen} onClose={onClose} title={`Editar: ${boatName}`}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Lista de Pasajeros</label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none h-40 text-sm"
+                  placeholder="Escribe los nombres aquí..."
+                  value={passengers}
+                  onChange={(e) => setPassengers(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Total de Personas</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  value={count}
+                  onChange={(e) => setCount(parseInt(e.target.value) || 0)}
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button onClick={onClose} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onClick={handleSave} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors">Guardar Cambios</button>
+              </div>
+            </div>
+          </Modal>
+        );
+      };
+
+      const FleetManager = ({ fleet, setFleet, onChange }) => {
+        const [name, setName] = useState("");
+        const [capacity, setCapacity] = useState("");
+
+        const addBoat = (e) => {
+          e.preventDefault();
+          if (!name || !capacity) return;
+          const newBoat = {
+            id: generateUUID(),
+            name,
+            capacity: parseInt(capacity)
+          };
+          setFleet([...fleet, newBoat]);
+          onChange();
+          setName("");
+          setCapacity("");
+        };
+
+        const removeBoat = (id) => {
+          if(!confirm("¿Borrar esta lancha? Se eliminará también de los horarios asignados.")) return;
+          setFleet(fleet.filter(b => b.id !== id));
+          onChange();
+        };
+
+        return (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <IconBoat className="w-6 h-6 text-blue-600" />
+              Gestión de Flota
+            </h2>
+            
+            <form onSubmit={addBoat} className="flex gap-3 mb-6 flex-wrap sm:flex-nowrap">
+              <input
+                type="text"
+                placeholder="Nombre (ej. Lancha Azul)"
+                className="flex-[2] border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="Capacidad"
+                className="flex-1 min-w-[100px] border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={capacity}
+                onChange={e => setCapacity(e.target.value)}
+              />
+              <button type="submit" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 shadow-sm">
+                <IconPlus className="w-5 h-5" /> Añadir
+              </button>
+            </form>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {fleet.map(boat => (
+                <div key={boat.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-colors">
+                  <div>
+                    <div className="font-bold text-gray-800">{boat.name}</div>
+                    <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                      <IconUsers className="w-4 h-4" /> Capacidad: {boat.capacity}
+                    </div>
+                  </div>
+                  <button onClick={() => removeBoat(boat.id)} className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors">
+                    <IconTrash className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+              {fleet.length === 0 && (
+                <div className="col-span-full text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400">
+                  Tu flota está vacía. Añade lanchas arriba para comenzar.
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const ScheduleSection = ({ title, trips, setTrips, fleet, onEditAssignment, onChange }) => {
+        
+        const addTrip = () => {
+          const newTrip = {
+            id: generateUUID(),
+            time: "10:00",
+            assignments: []
+          };
+          setTrips([...trips, newTrip]);
+          onChange();
+        };
+
+        const removeTrip = (tripId) => {
+          if(!confirm("¿Eliminar este horario completo?")) return;
+          setTrips(trips.filter(t => t.id !== tripId));
+          onChange();
+        };
+
+        const updateTripTime = (tripId, newTime) => {
+          setTrips(trips.map(t => t.id === tripId ? { ...t, time: newTime } : t));
+          onChange();
+        };
+
+        const addBoatToTrip = (tripId, boatId) => {
+          const boat = fleet.find(b => b.id === boatId);
+          if (!boat) return;
+
+          setTrips(trips.map(t => {
+            if (t.id !== tripId) return t;
+            if (t.assignments.some(a => a.boatId === boatId)) return t;
+            
+            return {
+              ...t,
+              assignments: [...t.assignments, {
+                id: generateUUID(),
+                boatId: boatId,
+                passengers: "",
+                count: 0
+              }]
+            };
+          }));
+          onChange();
+        };
+
+        const removeBoatFromTrip = (tripId, assignmentId) => {
+          setTrips(trips.map(t => {
+            if (t.id !== tripId) return t;
+            return {
+              ...t,
+              assignments: t.assignments.filter(a => a.id !== assignmentId)
+            };
+          }));
+          onChange();
+        };
+
+        return (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col h-full">
+             <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-800 border-b-2 border-blue-500 pb-1">{title}</h2>
+                <button onClick={addTrip} className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
+                  <IconPlus className="w-4 h-4" /> Nuevo Horario
+                </button>
+             </div>
+
+             <div className="space-y-8 flex-1">
+                {trips.map(trip => (
+                  <div key={trip.id} className="relative pl-6 border-l-4 border-blue-100">
+                    {/* Time Input */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="relative group">
+                        <div className="flex items-center gap-2 bg-gray-100 group-hover:bg-blue-50 text-gray-800 group-hover:text-blue-700 px-4 py-1.5 rounded-full font-bold text-xl transition-colors cursor-pointer border border-transparent group-hover:border-blue-200">
+                           <IconClock className="w-5 h-5" />
+                           <input 
+                              type="time" 
+                              value={trip.time} 
+                              onChange={(e) => updateTripTime(trip.id, e.target.value)}
+                              className="bg-transparent focus:outline-none w-24 cursor-pointer text-center"
+                            />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 border-t border-gray-100"></div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <select 
+                            className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors cursor-pointer"
+                            onChange={(e) => {
+                              if(e.target.value) {
+                                addBoatToTrip(trip.id, e.target.value);
+                                e.target.value = "";
+                              }
+                            }}
+                            value=""
+                          >
+                            <option value="" disabled>+ Asignar Lancha</option>
+                            {fleet.map(b => (
+                              <option key={b.id} value={b.id}>{b.name} ({b.capacity})</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                          </div>
+                        </div>
+
+                        <button onClick={() => removeTrip(trip.id)} className="text-gray-300 hover:text-red-500 p-2 transition-colors" title="Eliminar horario">
+                          <IconTrash className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Assigned Boats */}
+                    <div className="grid grid-cols-1 gap-3">
+                      {trip.assignments.map(assignment => {
+                        const boat = fleet.find(b => b.id === assignment.boatId);
+                        if (!boat) return null;
+                        
+                        const isOverCapacity = assignment.count > boat.capacity;
+
+                        return (
+                          <div 
+                            key={assignment.id} 
+                            onClick={() => onEditAssignment(trip.id, assignment, boat.name)}
+                            className={`
+                              relative p-4 rounded-xl border transition-all cursor-pointer shadow-sm
+                              ${isOverCapacity ? 'bg-red-50 border-red-200 hover:border-red-300' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-md'}
+                            `}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                                  {boat.name}
+                                  {isOverCapacity && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">Exceso de cupo</span>}
+                                </h4>
+                                <div className={`text-sm mt-1 flex items-center gap-1 ${isOverCapacity ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                                   <IconUsers className="w-3 h-3" />
+                                   {assignment.count} / {boat.capacity} Pasajeros
+                                </div>
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeBoatFromTrip(trip.id, assignment.id);
+                                }}
+                                className="text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                                title="Quitar lancha"
+                              >
+                                <IconX className="w-5 h-5" />
+                              </button>
+                            </div>
+                            
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              {assignment.passengers ? (
+                                <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                                  {assignment.passengers}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                                  Click para agregar lista de pasajeros...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {trip.assignments.length === 0 && (
+                        <div className="text-sm text-gray-400 italic py-4 bg-gray-50 rounded-lg text-center border border-dashed border-gray-200">
+                          Sin lanchas asignadas
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {trips.length === 0 && (
+                  <div className="text-center py-12 text-gray-400 flex flex-col items-center">
+                    <IconClock className="w-12 h-12 text-gray-200 mb-2" />
+                    <p>No hay horarios creados.</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [fleet, setFleet] = useState([]);
+        const [scheduleIda, setScheduleIda] = useState([]);
+        const [scheduleVuelta, setScheduleVuelta] = useState([]);
+        const [id, setId] = useState(null);
+        const [loading, setLoading] = useState(true);
+        const [unsavedChanges, setUnsavedChanges] = useState(false);
+        const [isSaving, setIsSaving] = useState(false);
+        const [modalOpen, setModalOpen] = useState(false);
+        const [editingData, setEditingData] = useState(null);
+
+        // Cargar Datos
+        useEffect(() => {
+          const loadData = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const queryId = params.get("id");
+            
+            if (queryId) {
+              try {
+                const res = await fetch(`/api/schedule?id=${queryId}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data) {
+                    setFleet(data.fleet || []);
+                    setScheduleIda(data.schedule?.ida || []);
+                    setScheduleVuelta(data.schedule?.vuelta || []);
+                    setId(queryId);
+                  }
+                }
+              } catch (e) {
+                console.error("Fetch error", e);
+              }
+            }
+            setLoading(false);
+          };
+          loadData();
+        }, []);
+
+        const handleChange = () => {
+          setUnsavedChanges(true);
+        };
+
+        const handleSave = async () => {
+          setIsSaving(true);
+          const payload = {
+            id: id,
+            data: { fleet, schedule: { ida: scheduleIda, vuelta: scheduleVuelta } }
+          };
+
+          try {
+            // Validación local
+            if (window.location.protocol === 'file:') {
+               alert("⚠️ MODO LOCAL DETECTADO\n\nEl guardado no funciona si abres el archivo desde tu PC.\nDebes subirlo a Cloudflare Pages.");
+               setIsSaving(false);
+               return;
+            }
+
+            const res = await fetch('/api/schedule', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (res.status === 404) {
+              alert("⚠️ ERROR 404: BACKEND NO ENCONTRADO\n\nCloudflare no encuentra la carpeta 'functions'.\nVerifica que subiste la carpeta '/functions/api/schedule.js' correctamente.");
+              setIsSaving(false);
+              return;
+            }
+
+            let json;
+            try {
+               json = await res.json();
+            } catch (err) {
+               alert(`⚠️ ERROR DEL SERVIDOR (${res.status})\n\nProbablemente Cloudflare Functions no está activo.`);
+               setIsSaving(false);
+               return;
+            }
+
+            if (res.ok && json.success) {
+              setId(json.id);
+              setUnsavedChanges(false);
+              if (!id) {
+                const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?id=${json.id}`;
+                window.history.pushState({path:newUrl},'',newUrl);
+              }
+              alert("✅ ¡Guardado Correctamente!");
+            } else {
+               if (json.error && json.error.includes("Binding")) {
+                   alert("⚠️ FALTA BASE DE DATOS\n\nVe a Cloudflare -> Settings -> Functions -> KV Bindings.\nAgrega: SCHEDULE_STORE");
+               } else {
+                   alert("Error al guardar: " + (json.error || "Desconocido"));
+               }
+            }
+          } catch (e) {
+            alert("⚠️ ERROR DE CONEXIÓN\n\nVerifica tu internet.");
+          }
+          setIsSaving(false);
+        };
+
+        const handleShare = () => {
+          const url = window.location.href;
+          navigator.clipboard.writeText(url).then(() => {
+            alert("📋 ¡Enlace copiado!\n\nPégalo en WhatsApp para compartir el cronograma.");
+          });
+        };
+
+        const openEditModal = (type, tripId, assignment, boatName) => {
+          setEditingData({ type, tripId, assignment, boatName });
+          setModalOpen(true);
+        };
+
+        const handleSaveAssignment = (updatedAssignment) => {
+           if (!editingData) return;
+           const { type, tripId } = editingData;
+           
+           const updateList = (list) => list.map(t => {
+             if (t.id !== tripId) return t;
+             return {
+               ...t,
+               assignments: t.assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a)
+             };
+           });
+
+           if (type === 'ida') setScheduleIda(updateList(scheduleIda));
+           else setScheduleVuelta(updateList(scheduleVuelta));
+           
+           handleChange();
+        };
+
+        if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">Cargando cronograma...</div>;
+
+        return (
+          <div className="min-h-screen pb-20">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+              <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                   <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2 rounded-xl text-white shadow-lg shadow-blue-200">
+                      <IconBoat className="w-5 h-5" />
+                   </div>
+                   <h1 className="font-bold text-xl text-gray-800 tracking-tight">Cronograma</h1>
+                </div>
+
+                <div className="flex gap-2 sm:gap-3">
+                   <button 
+                     onClick={handleSave}
+                     disabled={isSaving}
+                     className={`
+                       flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base
+                       ${unsavedChanges 
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md ring-2 ring-emerald-100' 
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
+                     `}
+                   >
+                     <IconSave className="w-4 h-4" />
+                     {isSaving ? 'Guardando...' : (unsavedChanges ? 'Guardar' : 'Guardado')}
+                   </button>
+
+                   <button 
+                     onClick={handleShare}
+                     disabled={!id || unsavedChanges}
+                     className={`
+                        flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base
+                        ${(!id || unsavedChanges)
+                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-transparent'
+                           : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200'}
+                     `}
+                   >
+                     <IconShare className="w-4 h-4" />
+                     <span className="hidden sm:inline">Compartir</span>
+                   </button>
+                </div>
+              </div>
+            </header>
+
+            <main className="max-w-6xl mx-auto px-4 py-8">
+              
+              {unsavedChanges && (
+                <div className="max-w-3xl mx-auto bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-8 flex items-center gap-3 animate-fade-in text-sm font-medium shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                  Tienes cambios sin guardar. Guarda antes de compartir el enlace.
+                </div>
+              )}
+
+              <FleetManager fleet={fleet} setFleet={setFleet} onChange={handleChange} />
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <ScheduleSection 
+                  title="Viajes de Ida" 
+                  trips={scheduleIda} 
+                  setTrips={setScheduleIda} 
+                  fleet={fleet}
+                  onChange={handleChange}
+                  onEditAssignment={(tripId, assign, bName) => openEditModal('ida', tripId, assign, bName)}
+                />
+                <ScheduleSection 
+                  title="Viajes de Vuelta" 
+                  trips={scheduleVuelta} 
+                  setTrips={setScheduleVuelta} 
+                  fleet={fleet}
+                  onChange={handleChange}
+                  onEditAssignment={(tripId, assign, bName) => openEditModal('vuelta', tripId, assign, bName)}
+                />
+              </div>
+
+              <EditAssignmentModal 
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                assignment={editingData?.assignment}
+                boatName={editingData?.boatName}
+                onSave={handleSaveAssignment}
+              />
+            </main>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
