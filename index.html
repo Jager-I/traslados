@@ -6,7 +6,6 @@
     <title>Cronograma de Traslados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- React and Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -16,8 +15,15 @@
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc; /* slate-50 */
       }
+      /* Ocultar scrollbar en movil pero permitir scroll */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
     </style>
-  <link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
@@ -57,6 +63,9 @@
       );
       const IconX = ({ className }) => (
          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      );
+      const IconEye = ({ className }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
       );
 
       // --- Componentes ---
@@ -202,7 +211,7 @@
         );
       };
 
-      const ScheduleSection = ({ title, trips, setTrips, fleet, onEditAssignment, onChange }) => {
+      const ScheduleSection = ({ title, trips, setTrips, fleet, onEditAssignment, onChange, readOnly }) => {
         
         const addTrip = () => {
           const newTrip = {
@@ -261,9 +270,11 @@
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col h-full">
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-800 border-b-2 border-blue-500 pb-1">{title}</h2>
-                <button onClick={addTrip} className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
-                  <IconPlus className="w-4 h-4" /> Nuevo Horario
-                </button>
+                {!readOnly && (
+                  <button onClick={addTrip} className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
+                    <IconPlus className="w-4 h-4" /> Nuevo Horario
+                  </button>
+                )}
              </div>
 
              <div className="space-y-8 flex-1">
@@ -272,45 +283,56 @@
                     {/* Time Input */}
                     <div className="flex items-center gap-4 mb-4">
                       <div className="relative group">
-                        <div className="flex items-center gap-2 bg-gray-100 group-hover:bg-blue-50 text-gray-800 group-hover:text-blue-700 px-4 py-1.5 rounded-full font-bold text-xl transition-colors cursor-pointer border border-transparent group-hover:border-blue-200">
+                        <div className={`
+                          flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xl border transition-colors
+                          ${readOnly 
+                             ? 'bg-gray-50 text-gray-700 border-gray-200' 
+                             : 'bg-gray-100 text-gray-800 border-transparent group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 cursor-pointer'}
+                        `}>
                            <IconClock className="w-5 h-5" />
-                           <input 
-                              type="time" 
-                              value={trip.time} 
-                              onChange={(e) => updateTripTime(trip.id, e.target.value)}
-                              className="bg-transparent focus:outline-none w-24 cursor-pointer text-center"
-                            />
+                           {readOnly ? (
+                             <span className="w-24 text-center inline-block">{trip.time}</span>
+                           ) : (
+                             <input 
+                                type="time" 
+                                value={trip.time} 
+                                onChange={(e) => updateTripTime(trip.id, e.target.value)}
+                                className="bg-transparent focus:outline-none w-24 cursor-pointer text-center"
+                              />
+                           )}
                         </div>
                       </div>
 
                       <div className="flex-1 border-t border-gray-100"></div>
 
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <select 
-                            className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors cursor-pointer"
-                            onChange={(e) => {
-                              if(e.target.value) {
-                                addBoatToTrip(trip.id, e.target.value);
-                                e.target.value = "";
-                              }
-                            }}
-                            value=""
-                          >
-                            <option value="" disabled>+ Asignar Lancha</option>
-                            {fleet.map(b => (
-                              <option key={b.id} value={b.id}>{b.name} ({b.capacity})</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      {!readOnly && (
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <select 
+                              className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors cursor-pointer"
+                              onChange={(e) => {
+                                if(e.target.value) {
+                                  addBoatToTrip(trip.id, e.target.value);
+                                  e.target.value = "";
+                                }
+                              }}
+                              value=""
+                            >
+                              <option value="" disabled>+ Asignar Lancha</option>
+                              {fleet.map(b => (
+                                <option key={b.id} value={b.id}>{b.name} ({b.capacity})</option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            </div>
                           </div>
-                        </div>
 
-                        <button onClick={() => removeTrip(trip.id)} className="text-gray-300 hover:text-red-500 p-2 transition-colors" title="Eliminar horario">
-                          <IconTrash className="w-5 h-5" />
-                        </button>
-                      </div>
+                          <button onClick={() => removeTrip(trip.id)} className="text-gray-300 hover:text-red-500 p-2 transition-colors" title="Eliminar horario">
+                            <IconTrash className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Assigned Boats */}
@@ -324,10 +346,11 @@
                         return (
                           <div 
                             key={assignment.id} 
-                            onClick={() => onEditAssignment(trip.id, assignment, boat.name)}
+                            onClick={() => !readOnly && onEditAssignment(trip.id, assignment, boat.name)}
                             className={`
-                              relative p-4 rounded-xl border transition-all cursor-pointer shadow-sm
-                              ${isOverCapacity ? 'bg-red-50 border-red-200 hover:border-red-300' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-md'}
+                              relative p-4 rounded-xl border transition-all shadow-sm
+                              ${readOnly ? '' : 'cursor-pointer hover:border-blue-400 hover:shadow-md'}
+                              ${isOverCapacity ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}
                             `}
                           >
                             <div className="flex justify-between items-start">
@@ -341,16 +364,18 @@
                                    {assignment.count} / {boat.capacity} Pasajeros
                                 </div>
                               </div>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeBoatFromTrip(trip.id, assignment.id);
-                                }}
-                                className="text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-gray-100 transition-colors"
-                                title="Quitar lancha"
-                              >
-                                <IconX className="w-5 h-5" />
-                              </button>
+                              {!readOnly && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeBoatFromTrip(trip.id, assignment.id);
+                                  }}
+                                  className="text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                                  title="Quitar lancha"
+                                >
+                                  <IconX className="w-5 h-5" />
+                                </button>
+                              )}
                             </div>
                             
                             <div className="mt-3 pt-3 border-t border-gray-100">
@@ -359,10 +384,12 @@
                                   {assignment.passengers}
                                 </p>
                               ) : (
-                                <p className="text-sm text-gray-400 italic flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                                  Click para agregar lista de pasajeros...
-                                </p>
+                                !readOnly && (
+                                  <p className="text-sm text-gray-400 italic flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                                    Click para agregar lista de pasajeros...
+                                  </p>
+                                )
                               )}
                             </div>
                           </div>
@@ -397,12 +424,18 @@
         const [isSaving, setIsSaving] = useState(false);
         const [modalOpen, setModalOpen] = useState(false);
         const [editingData, setEditingData] = useState(null);
+        const [isReadOnly, setIsReadOnly] = useState(false);
 
         // Cargar Datos
         useEffect(() => {
           const loadData = async () => {
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("id");
+            const mode = params.get("mode");
+
+            if (mode === 'view') {
+              setIsReadOnly(true);
+            }
             
             if (queryId) {
               try {
@@ -430,6 +463,8 @@
         };
 
         const handleSave = async () => {
+          if (isReadOnly) return;
+
           setIsSaving(true);
           const payload = {
             id: id,
@@ -487,19 +522,37 @@
         };
 
         const handleShare = () => {
-          const url = window.location.href;
-          navigator.clipboard.writeText(url).then(() => {
-            alert("📋 ¡Enlace copiado!\n\nPégalo en WhatsApp para compartir el cronograma.");
+          // Si hay cambios sin guardar y soy el admin, avisar
+          if (unsavedChanges && !isReadOnly) {
+            alert("⚠️ Tienes cambios sin guardar.\n\nGuarda primero para que los demás vean la versión actualizada.");
+            return;
+          }
+
+          // Generar URL. Si soy admin (!isReadOnly), genero la URL con modo vista para compartir
+          const baseUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+          let shareUrl = window.location.href;
+
+          if (!isReadOnly && id) {
+            shareUrl = `${baseUrl}?id=${id}&mode=view`;
+          }
+
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            if (!isReadOnly) {
+               alert("📋 ¡Enlace de VISTA copiado!\n\nEste link es 'Solo Lectura'.\nPuedes enviarlo a tus clientes y choferes con seguridad.");
+            } else {
+               alert("📋 ¡Enlace copiado!");
+            }
           });
         };
 
         const openEditModal = (type, tripId, assignment, boatName) => {
+          if (isReadOnly) return;
           setEditingData({ type, tripId, assignment, boatName });
           setModalOpen(true);
         };
 
         const handleSaveAssignment = (updatedAssignment) => {
-           if (!editingData) return;
+           if (!editingData || isReadOnly) return;
            const { type, tripId } = editingData;
            
            const updateList = (list) => list.map(t => {
@@ -526,36 +579,42 @@
                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2 rounded-xl text-white shadow-lg shadow-blue-200">
                       <IconBoat className="w-5 h-5" />
                    </div>
-                   <h1 className="font-bold text-xl text-gray-800 tracking-tight">Cronograma</h1>
+                   <h1 className="font-bold text-xl text-gray-800 tracking-tight">
+                     {isReadOnly ? "Cronograma (Solo Lectura)" : "Gestor de Traslados"}
+                   </h1>
                 </div>
 
                 <div className="flex gap-2 sm:gap-3">
-                   <button 
-                     onClick={handleSave}
-                     disabled={isSaving}
-                     className={`
-                       flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base
-                       ${unsavedChanges 
-                          ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md ring-2 ring-emerald-100' 
-                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
-                     `}
-                   >
-                     <IconSave className="w-4 h-4" />
-                     {isSaving ? 'Guardando...' : (unsavedChanges ? 'Guardar' : 'Guardado')}
-                   </button>
+                   {!isReadOnly && (
+                     <button 
+                       onClick={handleSave}
+                       disabled={isSaving}
+                       className={`
+                         flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base
+                         ${unsavedChanges 
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md ring-2 ring-emerald-100' 
+                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
+                       `}
+                     >
+                       <IconSave className="w-4 h-4" />
+                       <span className="hidden sm:inline">{isSaving ? 'Guardando...' : (unsavedChanges ? 'Guardar' : 'Guardado')}</span>
+                     </button>
+                   )}
 
                    <button 
                      onClick={handleShare}
-                     disabled={!id || unsavedChanges}
+                     disabled={!id || (unsavedChanges && !isReadOnly)}
                      className={`
                         flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm sm:text-base
-                        ${(!id || unsavedChanges)
+                        ${(!id)
                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-transparent'
                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200'}
                      `}
                    >
-                     <IconShare className="w-4 h-4" />
-                     <span className="hidden sm:inline">Compartir</span>
+                     {isReadOnly ? <IconShare className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
+                     <span className="hidden sm:inline">
+                       {isReadOnly ? "Compartir" : "Compartir Vista"}
+                     </span>
                    </button>
                 </div>
               </div>
@@ -563,14 +622,17 @@
 
             <main className="max-w-6xl mx-auto px-4 py-8">
               
-              {unsavedChanges && (
-                <div className="max-w-3xl mx-auto bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-8 flex items-center gap-3 animate-fade-in text-sm font-medium shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                  Tienes cambios sin guardar. Guarda antes de compartir el enlace.
+              {isReadOnly && (
+                <div className="max-w-3xl mx-auto bg-blue-50 border border-blue-100 text-blue-800 px-4 py-3 rounded-lg mb-8 flex items-center gap-3 text-sm">
+                  <IconBoat className="w-5 h-5" />
+                  Estás viendo el cronograma en modo invitado. No puedes realizar cambios.
                 </div>
               )}
 
-              <FleetManager fleet={fleet} setFleet={setFleet} onChange={handleChange} />
+              {/* Ocultamos el Gestor de Flota si es Solo Lectura */}
+              {!isReadOnly && (
+                <FleetManager fleet={fleet} setFleet={setFleet} onChange={handleChange} />
+              )}
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <ScheduleSection 
@@ -580,6 +642,7 @@
                   fleet={fleet}
                   onChange={handleChange}
                   onEditAssignment={(tripId, assign, bName) => openEditModal('ida', tripId, assign, bName)}
+                  readOnly={isReadOnly}
                 />
                 <ScheduleSection 
                   title="Viajes de Vuelta" 
@@ -588,6 +651,7 @@
                   fleet={fleet}
                   onChange={handleChange}
                   onEditAssignment={(tripId, assign, bName) => openEditModal('vuelta', tripId, assign, bName)}
+                  readOnly={isReadOnly}
                 />
               </div>
 
