@@ -23,11 +23,12 @@
           scrollbar-width: none;
       }
       @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(-10px); max-height: 0; }
+        to { opacity: 1; transform: translateY(0); max-height: 500px; }
       }
       .animate-slide-down {
         animation: slideDown 0.3s ease-out forwards;
+        overflow: hidden;
       }
       .slot-transition {
         transition: all 0.2s ease;
@@ -51,11 +52,8 @@
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
       };
 
-      // Helper para manejar la lista de pasajeros (string separado por comas)
       const parsePassengers = (str) => str ? str.split(',').map(s => s.trim()) : [];
       const serializePassengers = (arr) => arr.join(',');
-
-      // Normalizar nombres para comparación (quita acentos y mayusculas)
       const normalizeName = (name) => name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
       // --- Iconos SVG ---
@@ -72,6 +70,8 @@
       const IconArrowRight = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>);
       const IconArrowLeft = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
       const IconUser = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
+      const IconChevronDown = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>);
+      const IconChevronUp = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6"/></svg>);
 
       // --- Componentes ---
 
@@ -145,34 +145,35 @@
         );
       };
 
-      // Componente de Items/Slots de pasajeros
       const PassengerSlots = ({ assignment, boat, onSlotClick, readOnly }) => {
         const slots = useMemo(() => {
           const currentPassengers = parsePassengers(assignment.passengers);
-          // Creamos un array del tamaño de la capacidad de la lancha
           const items = Array(boat.capacity).fill(null).map((_, i) => currentPassengers[i] || null);
           return items;
         }, [assignment.passengers, boat.capacity]);
 
         return (
-          <div className="grid grid-cols-1 gap-2 mt-3">
+          <div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100 mt-2">
+             <div className="text-xs text-gray-400 font-medium mb-1 uppercase tracking-wide">
+                Lugares Disponibles
+             </div>
              {slots.map((passenger, index) => (
                 <div 
                   key={index}
                   onClick={() => onSlotClick(index, passenger)}
                   className={`
-                    flex items-center gap-3 p-2.5 rounded-lg border text-sm font-medium slot-transition cursor-pointer
+                    flex items-center gap-3 p-3 rounded-lg border text-sm font-medium slot-transition cursor-pointer
                     ${passenger 
-                       ? 'bg-white border-gray-300 text-gray-800 shadow-sm' 
-                       : 'bg-gray-50 border-dashed border-gray-300 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'}
+                       ? 'bg-white border-gray-200 text-gray-800 shadow-sm' 
+                       : 'bg-white border-dashed border-gray-300 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'}
                   `}
                 >
-                   <div className={`p-1.5 rounded-full ${passenger ? 'bg-gray-100 text-gray-600' : 'bg-transparent text-gray-300'}`}>
+                   <div className={`p-1.5 rounded-full ${passenger ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}>
                       {passenger ? <IconUser className="w-4 h-4" /> : <IconPlus className="w-4 h-4" />}
                    </div>
                    
                    <span className="flex-1 truncate">
-                      {passenger || "Libre - Click para reservar"}
+                      {passenger || "Libre - Toca para anotarte"}
                    </span>
 
                    {passenger && !readOnly && (
@@ -184,8 +185,9 @@
         );
       };
 
-      // Componente Sección de Horarios
       const ScheduleSection = ({ title, type, trips, setTrips, fleet, onRegisterPassenger, onChange, readOnly }) => {
+        const [expandedAssignmentId, setExpandedAssignmentId] = useState(null); // Estado para controlar despliegue
+
         const isIda = type === 'ida';
         const borderClass = isIda ? 'border-blue-500' : 'border-orange-500';
         const bgIconClass = isIda ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700';
@@ -214,7 +216,10 @@
           setTrips(trips.map(t => {
             if (t.id !== tripId) return t;
             if (t.assignments.some(a => a.boatId === boatId)) return t;
-            return { ...t, assignments: [...t.assignments, { id: generateUUID(), boatId, passengers: "", count: 0 }] };
+            // Al añadir lancha, la expandimos automaticamente para verla
+            const newId = generateUUID();
+            setExpandedAssignmentId(newId); 
+            return { ...t, assignments: [...t.assignments, { id: newId, boatId, passengers: "", count: 0 }] };
           }));
           onChange();
         };
@@ -227,27 +232,27 @@
           onChange();
         };
 
-        // Manejo de clicks en slots
+        const toggleExpand = (id) => {
+          setExpandedAssignmentId(prev => prev === id ? null : id);
+        };
+
         const handleSlotInteraction = (tripId, assignmentId, slotIndex, currentName) => {
           if (currentName) {
-            // Si está ocupado
             if (readOnly) {
-              alert("Este lugar ya está ocupado por " + currentName);
+              alert("Lugar ocupado por " + currentName);
               return;
             }
-            if(confirm(`¿Quitar a ${currentName} de la lista?`)) {
-               onRegisterPassenger(type, tripId, assignmentId, slotIndex, null); // Null borra
+            if(confirm(`¿Quitar a ${currentName}?`)) {
+               onRegisterPassenger(type, tripId, assignmentId, slotIndex, null);
             }
           } else {
-            // Si está vacío -> Inscribirse
-            const name = prompt("Ingresa tu Nombre y Apellido para reservar este lugar:");
+            const name = prompt("Tu Nombre y Apellido:");
             if (name && name.trim().length > 0) {
                onRegisterPassenger(type, tripId, assignmentId, slotIndex, name.trim());
             }
           }
         };
 
-        // Ordenar viajes por hora
         const sortedTrips = [...trips].sort((a, b) => a.time.localeCompare(b.time));
 
         return (
@@ -267,8 +272,9 @@
              <div className="space-y-8 flex-1">
                 {sortedTrips.map(trip => (
                   <div key={trip.id} className={`relative pl-6 border-l-4 ${borderTripClass}`}>
-                    {/* Hora */}
-                    <div className="flex items-center gap-4 mb-2">
+                    
+                    {/* Header Hora */}
+                    <div className="flex items-center gap-4 mb-3">
                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xl border transition-colors ${readOnly ? 'bg-gray-50 text-gray-800 border-gray-200' : `${bgIconClass} border-transparent`}`}>
                            <IconClock className="w-5 h-5" />
                            {readOnly ? (
@@ -289,38 +295,55 @@
                         )}
                     </div>
 
-                    {/* Lanchas */}
-                    <div className="grid grid-cols-1 gap-6 mt-4">
+                    {/* Lista de Lanchas (Assignments) */}
+                    <div className="grid grid-cols-1 gap-3 mt-2">
                       {trip.assignments.map(assignment => {
                         const boat = fleet.find(b => b.id === assignment.boatId);
                         if (!boat) return null;
                         const isOverCapacity = assignment.count > boat.capacity;
+                        const isExpanded = expandedAssignmentId === assignment.id;
 
                         return (
                           <div key={assignment.id} 
-                            className={`relative p-4 rounded-xl border transition-all shadow-sm bg-white border-gray-200`}
+                            className={`relative rounded-xl border transition-all shadow-sm bg-white overflow-hidden ${isOverCapacity ? 'border-red-300' : 'border-gray-200 hover:border-blue-300'}`}
                           >
-                            <div className="flex justify-between items-start mb-2 border-b border-gray-100 pb-2">
+                            {/* Cabecera Clickeable */}
+                            <div 
+                               onClick={() => toggleExpand(assignment.id)}
+                               className="flex justify-between items-center p-4 cursor-pointer bg-white hover:bg-gray-50 transition-colors"
+                            >
                               <div>
                                 <h4 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
                                   {boat.name}
                                 </h4>
-                                <div className={`text-sm mt-0.5 flex items-center gap-1 text-gray-500`}>
-                                   <IconUsers className="w-3 h-3" /> {assignment.count} / {boat.capacity} Ocupados
+                                {/* BADGE DE CAPACIDAD MEJORADO - Contraste alto */}
+                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-bold mt-1 ${isOverCapacity ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
+                                   <IconUsers className="w-4 h-4" /> 
+                                   <span>{assignment.count} / {boat.capacity} Pax</span>
                                 </div>
                               </div>
-                              {!readOnly && (
-                                <button onClick={() => removeBoatFromTrip(trip.id, assignment.id)} className="text-gray-400 hover:text-red-500 p-1"><IconX className="w-5 h-5" /></button>
-                              )}
+                              
+                              <div className="flex items-center gap-3">
+                                {!readOnly && (
+                                    <button onClick={(e) => { e.stopPropagation(); removeBoatFromTrip(trip.id, assignment.id); }} className="text-gray-300 hover:text-red-500 p-2"><IconX className="w-5 h-5" /></button>
+                                )}
+                                <div className={`text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                   <IconChevronDown className="w-6 h-6" />
+                                </div>
+                              </div>
                             </div>
                             
-                            {/* Slots Interactivos */}
-                            <PassengerSlots 
-                               assignment={assignment} 
-                               boat={boat} 
-                               onSlotClick={(idx, name) => handleSlotInteraction(trip.id, assignment.id, idx, name)}
-                               readOnly={readOnly}
-                            />
+                            {/* Slots Desplegables */}
+                            {isExpanded && (
+                               <div className="px-4 pb-4 animate-slide-down bg-gray-50/50">
+                                  <PassengerSlots 
+                                     assignment={assignment} 
+                                     boat={boat} 
+                                     onSlotClick={(idx, name) => handleSlotInteraction(trip.id, assignment.id, idx, name)}
+                                     readOnly={readOnly}
+                                  />
+                               </div>
+                            )}
 
                           </div>
                         );
@@ -458,13 +481,13 @@
           navigator.clipboard.writeText(shareUrl).then(() => alert("📋 Link copiado!"));
         };
 
-        // LÓGICA CENTRAL: REGISTRAR/MOVER PASAJERO
+        // LÓGICA DE REGISTRO / MOVIMIENTO
         const handleRegisterPassenger = (type, tripId, assignmentId, slotIndex, newName) => {
           const targetList = type === 'ida' ? scheduleIda : scheduleVuelta;
           const setTargetList = type === 'ida' ? setScheduleIda : setScheduleVuelta;
 
-          // 1. Si es borrar (newName === null), solo borramos del slot actual
           if (!newName) {
+            // Borrar
             const newList = targetList.map(trip => {
               if (trip.id !== tripId) return trip;
               return {
@@ -472,20 +495,7 @@
                 assignments: trip.assignments.map(ass => {
                   if (ass.id !== assignmentId) return ass;
                   const currentPax = parsePassengers(ass.passengers);
-                  currentPax[slotIndex] = ""; // Borrar
-                  const cleanedPax = currentPax.filter(p => p !== ""); // Recompactar? No, mejor mantener slots vacios?
-                  // El requerimiento dice slots fijos. Si borro el 2, queda el hueco? O se corre?
-                  // "Solamente se podran agregar 5 items". Asumimos huecos fijos o lista dinamica?
-                  // Para simplificar la UX de "Slots", tratamos la lista como posiciones fijas visualmente, 
-                  // pero guardamos string limpio.
-                  // ESTRATEGIA: Guardamos array limpio, pero al renderizar llenamos con nulls.
-                  // Al escribir en slot X, si el array es mas corto, pusheamos.
-                  // RE-ESTRATEGIA PARA MOVIMIENTOS: Mejor manipular el array de strings directamente.
-                  
-                  // Vamos a reconstruir el array exacto basado en el SlotIndex visual
-                  // Pero como guardamos CSV, es dificil mantener "huecos" vacios en el medio permanentemente sin complicar el parsing.
-                  // Simplificación: Si borras a alguien, el de abajo sube (comportamiento lista).
-                  currentPax.splice(slotIndex, 1);
+                  currentPax.splice(slotIndex, 1); // Remover del array
                   return { ...ass, passengers: serializePassengers(currentPax), count: currentPax.length };
                 })
               };
@@ -495,15 +505,12 @@
             return;
           }
 
-          // 2. Si es agregar, buscar duplicados en TODO el cronograma del MISMO TIPO (Ida con Ida, Vuelta con Vuelta)
-          // Porque una persona puede ir y volver, pero no ir dos veces.
+          // Verificar Duplicados
           let duplicateFound = null;
-
           targetList.forEach(t => {
              t.assignments.forEach(a => {
                 const pax = parsePassengers(a.passengers);
                 if (pax.some(p => normalizeName(p) === normalizeName(newName))) {
-                   // Encontramos duplicado
                    const boat = fleet.find(b => b.id === a.boatId);
                    duplicateFound = { trip: t, assignment: a, boatName: boat ? boat.name : "Desconocida" };
                 }
@@ -512,15 +519,13 @@
 
           if (duplicateFound) {
              const confirmMove = confirm(
-                `⚠️ ${newName} ya está anotado/a en:\n\n` +
+                `⚠️ ${newName} ya está anotado/a en:\n` +
                 `🕒 ${duplicateFound.trip.time} hs - 🚤 ${duplicateFound.boatName}\n\n` +
-                `¿Deseas MOVERLO/A a este nuevo horario y liberar el anterior?`
+                `¿Deseas MOVERLO/A aquí?`
              );
-             
              if (!confirmMove) return;
 
-             // Ejecutar Movimiento:
-             // A. Borrar del lugar viejo
+             // Mover: Borrar del viejo y agregar al nuevo
              const listAfterRemove = targetList.map(trip => {
                if (trip.id !== duplicateFound.trip.id) return trip;
                return {
@@ -533,7 +538,6 @@
                };
              });
 
-             // B. Agregar al lugar nuevo (usando la lista ya modificada)
              const listAfterAdd = listAfterRemove.map(trip => {
                if (trip.id !== tripId) return trip;
                return {
@@ -541,21 +545,21 @@
                  assignments: trip.assignments.map(ass => {
                    if (ass.id !== assignmentId) return ass;
                    const p = parsePassengers(ass.passengers);
-                   if (p.length < fleet.find(b=>b.id === ass.boatId).capacity) {
-                      p.push(newName); // Agregamos al final disponible
+                   const boatCapacity = fleet.find(b=>b.id === ass.boatId).capacity;
+                   if (p.length < boatCapacity) {
+                      p.push(newName);
                    } else {
-                      alert("Error: Alguien ocupó el lugar mientras confirmabas.");
+                      alert("Error: Alguien ocupó el lugar.");
                    }
                    return { ...ass, passengers: serializePassengers(p), count: p.length };
                  })
                };
              });
-             
              setTargetList(listAfterAdd);
              handleChange();
 
           } else {
-             // 3. No hay duplicados, agregar normalmente
+             // Agregar normal
              const newList = targetList.map(trip => {
                if (trip.id !== tripId) return trip;
                return {
@@ -563,10 +567,9 @@
                  assignments: trip.assignments.map(ass => {
                    if (ass.id !== assignmentId) return ass;
                    const p = parsePassengers(ass.passengers);
-                   // Verificar capacidad real antes de agregar
                    const boatCapacity = fleet.find(b=>b.id === ass.boatId).capacity;
                    if (p.length >= boatCapacity) {
-                      alert("¡La lancha se llenó!");
+                      alert("¡Lancha llena!");
                       return ass;
                    }
                    p.push(newName);
