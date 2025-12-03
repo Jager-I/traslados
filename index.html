@@ -29,6 +29,12 @@
       .animate-slide-down {
         animation: slideDown 0.3s ease-out forwards;
       }
+      .slot-transition {
+        transition: all 0.2s ease;
+      }
+      .slot-transition:hover {
+        transform: translateY(-2px);
+      }
     </style>
 </head>
   <body>
@@ -45,131 +51,29 @@
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
       };
 
+      // Helper para manejar la lista de pasajeros (string separado por comas)
+      const parsePassengers = (str) => str ? str.split(',').map(s => s.trim()) : [];
+      const serializePassengers = (arr) => arr.join(',');
+
+      // Normalizar nombres para comparación (quita acentos y mayusculas)
+      const normalizeName = (name) => name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
       // --- Iconos SVG ---
-      const IconBoat = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1S13.2 21 14.5 21c2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.9 5.8 2.8 8"/><path d="M10 10V4a2 2 0 0 1 2-2a2 2 0 0 1 2 2v6"/><path d="M14 10l-2-2-2 2"/></svg>
-      );
-      const IconPlus = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-      );
-      const IconTrash = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-      );
-      const IconUsers = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      );
-      const IconSave = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-      );
-      const IconShare = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-      );
-      const IconClock = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      );
-      const IconX = ({ className }) => (
-         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      );
-      const IconEye = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-      );
-      const IconSearch = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
-      );
-      const IconArrowRight = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-      );
-      const IconArrowLeft = ({ className }) => (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-      );
+      const IconBoat = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1S13.2 21 14.5 21c2.5 0 2.5-2 5-2 1.3 0 1.9 1 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.9 5.8 2.8 8"/><path d="M10 10V4a2 2 0 0 1 2-2a2 2 0 0 1 2 2v6"/><path d="M14 10l-2-2-2 2"/></svg>);
+      const IconPlus = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+      const IconTrash = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>);
+      const IconUsers = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
+      const IconSave = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>);
+      const IconShare = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>);
+      const IconClock = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>);
+      const IconX = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>);
+      const IconEye = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>);
+      const IconSearch = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>);
+      const IconArrowRight = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>);
+      const IconArrowLeft = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
+      const IconUser = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
 
       // --- Componentes ---
-
-      const Modal = ({ isOpen, onClose, title, children }) => {
-        if (!isOpen) return null;
-        return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
-              <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-                <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <IconX className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="p-6">
-                {children}
-              </div>
-            </div>
-          </div>
-        );
-      };
-
-      const EditAssignmentModal = ({ isOpen, onClose, assignment, boatName, onSave }) => {
-        const [passengers, setPassengers] = useState("");
-        const [count, setCount] = useState(0);
-
-        useEffect(() => {
-          if (isOpen && assignment) {
-            setPassengers(assignment.passengers || "");
-            setCount(assignment.count || 0);
-          }
-        }, [isOpen, assignment]);
-
-        const handleSave = () => {
-          onSave({ ...assignment, passengers, count });
-          onClose();
-        };
-
-        return (
-          <Modal isOpen={isOpen} onClose={onClose} title={`Editar: ${boatName}`}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Lista de Pasajeros</label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none h-40 text-sm"
-                  placeholder="Escribe los nombres aquí (separados por coma o enter)..."
-                  value={passengers}
-                  onChange={(e) => setPassengers(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Total de Personas</label>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  value={count}
-                  onChange={(e) => setCount(parseInt(e.target.value) || 0)}
-                />
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button onClick={onClose} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancelar</button>
-                <button onClick={handleSave} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors">Guardar Cambios</button>
-              </div>
-            </div>
-          </Modal>
-        );
-      };
-
-      // Componente visual para mostrar los nombres bonitos
-      const PassengerList = ({ text }) => {
-        if (!text) return <p className="text-sm text-gray-400 italic">Lista de pasajeros vacía...</p>;
-        
-        // Separar por comas, saltos de línea o puntos
-        const names = text.split(/[\n,.]+/).map(n => n.trim()).filter(n => n.length > 0);
-        
-        if (names.length === 0) return <p className="text-sm text-gray-500">{text}</p>;
-
-        return (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {names.map((name, i) => (
-              <span key={i} className="inline-block px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full border border-gray-200">
-                {name}
-              </span>
-            ))}
-          </div>
-        );
-      };
 
       const FleetManager = ({ fleet, setFleet, onChange }) => {
         const [name, setName] = useState("");
@@ -241,22 +145,55 @@
         );
       };
 
-      // Componente Sección de Horarios (Ida o Vuelta)
-      const ScheduleSection = ({ title, type, trips, setTrips, fleet, onEditAssignment, onChange, readOnly }) => {
-        
-        // Configuración de Colores según tipo (Ida: Azul, Vuelta: Naranja)
+      // Componente de Items/Slots de pasajeros
+      const PassengerSlots = ({ assignment, boat, onSlotClick, readOnly }) => {
+        const slots = useMemo(() => {
+          const currentPassengers = parsePassengers(assignment.passengers);
+          // Creamos un array del tamaño de la capacidad de la lancha
+          const items = Array(boat.capacity).fill(null).map((_, i) => currentPassengers[i] || null);
+          return items;
+        }, [assignment.passengers, boat.capacity]);
+
+        return (
+          <div className="grid grid-cols-1 gap-2 mt-3">
+             {slots.map((passenger, index) => (
+                <div 
+                  key={index}
+                  onClick={() => onSlotClick(index, passenger)}
+                  className={`
+                    flex items-center gap-3 p-2.5 rounded-lg border text-sm font-medium slot-transition cursor-pointer
+                    ${passenger 
+                       ? 'bg-white border-gray-300 text-gray-800 shadow-sm' 
+                       : 'bg-gray-50 border-dashed border-gray-300 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'}
+                  `}
+                >
+                   <div className={`p-1.5 rounded-full ${passenger ? 'bg-gray-100 text-gray-600' : 'bg-transparent text-gray-300'}`}>
+                      {passenger ? <IconUser className="w-4 h-4" /> : <IconPlus className="w-4 h-4" />}
+                   </div>
+                   
+                   <span className="flex-1 truncate">
+                      {passenger || "Libre - Click para reservar"}
+                   </span>
+
+                   {passenger && !readOnly && (
+                      <span className="text-xs text-red-400 hover:text-red-600 px-2 py-1">Quitar</span>
+                   )}
+                </div>
+             ))}
+          </div>
+        );
+      };
+
+      // Componente Sección de Horarios
+      const ScheduleSection = ({ title, type, trips, setTrips, fleet, onRegisterPassenger, onChange, readOnly }) => {
         const isIda = type === 'ida';
-        const themeColor = isIda ? 'blue' : 'orange';
-        
-        // Clases dinámicas Tailwind
         const borderClass = isIda ? 'border-blue-500' : 'border-orange-500';
         const bgIconClass = isIda ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700';
         const borderTripClass = isIda ? 'border-l-blue-200' : 'border-l-orange-200';
         const textTitleClass = isIda ? 'text-blue-900' : 'text-orange-900';
 
         const addTrip = () => {
-          const newTrip = { id: generateUUID(), time: "10:00", assignments: [] };
-          setTrips([...trips, newTrip]);
+          setTrips([...trips, { id: generateUUID(), time: "10:00", assignments: [] }]);
           onChange();
         };
 
@@ -290,6 +227,26 @@
           onChange();
         };
 
+        // Manejo de clicks en slots
+        const handleSlotInteraction = (tripId, assignmentId, slotIndex, currentName) => {
+          if (currentName) {
+            // Si está ocupado
+            if (readOnly) {
+              alert("Este lugar ya está ocupado por " + currentName);
+              return;
+            }
+            if(confirm(`¿Quitar a ${currentName} de la lista?`)) {
+               onRegisterPassenger(type, tripId, assignmentId, slotIndex, null); // Null borra
+            }
+          } else {
+            // Si está vacío -> Inscribirse
+            const name = prompt("Ingresa tu Nombre y Apellido para reservar este lugar:");
+            if (name && name.trim().length > 0) {
+               onRegisterPassenger(type, tripId, assignmentId, slotIndex, name.trim());
+            }
+          }
+        };
+
         // Ordenar viajes por hora
         const sortedTrips = [...trips].sort((a, b) => a.time.localeCompare(b.time));
 
@@ -311,7 +268,7 @@
                 {sortedTrips.map(trip => (
                   <div key={trip.id} className={`relative pl-6 border-l-4 ${borderTripClass}`}>
                     {/* Hora */}
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-2">
                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xl border transition-colors ${readOnly ? 'bg-gray-50 text-gray-800 border-gray-200' : `${bgIconClass} border-transparent`}`}>
                            <IconClock className="w-5 h-5" />
                            {readOnly ? (
@@ -333,7 +290,7 @@
                     </div>
 
                     {/* Lanchas */}
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-6 mt-4">
                       {trip.assignments.map(assignment => {
                         const boat = fleet.find(b => b.id === assignment.boatId);
                         if (!boat) return null;
@@ -341,36 +298,30 @@
 
                         return (
                           <div key={assignment.id} 
-                            onClick={() => !readOnly && onEditAssignment(trip.id, assignment, boat.name)}
-                            className={`relative p-4 rounded-xl border transition-all shadow-sm ${readOnly ? 'bg-white' : 'cursor-pointer hover:shadow-md'} ${isOverCapacity ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}
+                            className={`relative p-4 rounded-xl border transition-all shadow-sm bg-white border-gray-200`}
                           >
-                            <div className="flex justify-between items-start mb-2">
+                            <div className="flex justify-between items-start mb-2 border-b border-gray-100 pb-2">
                               <div>
                                 <h4 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
                                   {boat.name}
-                                  {isOverCapacity && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">Exceso</span>}
                                 </h4>
-                                <div className={`text-sm mt-0.5 flex items-center gap-1 ${isOverCapacity ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-                                   <IconUsers className="w-3 h-3" /> {assignment.count} / {boat.capacity} Pax
+                                <div className={`text-sm mt-0.5 flex items-center gap-1 text-gray-500`}>
+                                   <IconUsers className="w-3 h-3" /> {assignment.count} / {boat.capacity} Ocupados
                                 </div>
                               </div>
                               {!readOnly && (
-                                <button onClick={(e) => { e.stopPropagation(); removeBoatFromTrip(trip.id, assignment.id); }} className="text-gray-400 hover:text-red-500 p-1"><IconX className="w-5 h-5" /></button>
+                                <button onClick={() => removeBoatFromTrip(trip.id, assignment.id)} className="text-gray-400 hover:text-red-500 p-1"><IconX className="w-5 h-5" /></button>
                               )}
                             </div>
                             
-                            {/* Visualización de Pasajeros Mejorada */}
-                            <div className="pt-2 border-t border-gray-100">
-                              {readOnly ? (
-                                <PassengerList text={assignment.passengers} />
-                              ) : (
-                                assignment.passengers ? (
-                                  <p className="text-sm text-gray-600 line-clamp-2">{assignment.passengers}</p>
-                                ) : (
-                                  <p className="text-sm text-gray-400 italic">Click para agregar pasajeros...</p>
-                                )
-                              )}
-                            </div>
+                            {/* Slots Interactivos */}
+                            <PassengerSlots 
+                               assignment={assignment} 
+                               boat={boat} 
+                               onSlotClick={(idx, name) => handleSlotInteraction(trip.id, assignment.id, idx, name)}
+                               readOnly={readOnly}
+                            />
+
                           </div>
                         );
                       })}
@@ -408,8 +359,6 @@
 
          const resultsIda = searchInList(ida, 'Ida');
          const resultsVuelta = searchInList(vuelta, 'Vuelta');
-         
-         // Combinar y ordenar por hora
          const allResults = [...resultsIda, ...resultsVuelta].sort((a, b) => a.time.localeCompare(b.time));
 
          if (allResults.length === 0) return (
@@ -451,8 +400,6 @@
         const [loading, setLoading] = useState(true);
         const [unsavedChanges, setUnsavedChanges] = useState(false);
         const [isSaving, setIsSaving] = useState(false);
-        const [modalOpen, setModalOpen] = useState(false);
-        const [editingData, setEditingData] = useState(null);
         const [isReadOnly, setIsReadOnly] = useState(false);
         const [searchTerm, setSearchTerm] = useState("");
 
@@ -485,7 +432,6 @@
         const handleChange = () => { setUnsavedChanges(true); };
 
         const handleSave = async () => {
-          if (isReadOnly) return;
           setIsSaving(true);
           const payload = { id, data: { fleet, schedule: { ida: scheduleIda, vuelta: scheduleVuelta } } };
           try {
@@ -512,19 +458,125 @@
           navigator.clipboard.writeText(shareUrl).then(() => alert("📋 Link copiado!"));
         };
 
-        const openEditModal = (type, tripId, assignment, boatName) => {
-          if (isReadOnly) return;
-          setEditingData({ type, tripId, assignment, boatName });
-          setModalOpen(true);
-        };
+        // LÓGICA CENTRAL: REGISTRAR/MOVER PASAJERO
+        const handleRegisterPassenger = (type, tripId, assignmentId, slotIndex, newName) => {
+          const targetList = type === 'ida' ? scheduleIda : scheduleVuelta;
+          const setTargetList = type === 'ida' ? setScheduleIda : setScheduleVuelta;
 
-        const handleSaveAssignment = (updated) => {
-           if (!editingData || isReadOnly) return;
-           const { type, tripId } = editingData;
-           const updateList = (list) => list.map(t => t.id !== tripId ? t : { ...t, assignments: t.assignments.map(a => a.id === updated.id ? updated : a) });
-           if (type === 'ida') setScheduleIda(updateList(scheduleIda));
-           else setScheduleVuelta(updateList(scheduleVuelta));
-           handleChange();
+          // 1. Si es borrar (newName === null), solo borramos del slot actual
+          if (!newName) {
+            const newList = targetList.map(trip => {
+              if (trip.id !== tripId) return trip;
+              return {
+                ...trip,
+                assignments: trip.assignments.map(ass => {
+                  if (ass.id !== assignmentId) return ass;
+                  const currentPax = parsePassengers(ass.passengers);
+                  currentPax[slotIndex] = ""; // Borrar
+                  const cleanedPax = currentPax.filter(p => p !== ""); // Recompactar? No, mejor mantener slots vacios?
+                  // El requerimiento dice slots fijos. Si borro el 2, queda el hueco? O se corre?
+                  // "Solamente se podran agregar 5 items". Asumimos huecos fijos o lista dinamica?
+                  // Para simplificar la UX de "Slots", tratamos la lista como posiciones fijas visualmente, 
+                  // pero guardamos string limpio.
+                  // ESTRATEGIA: Guardamos array limpio, pero al renderizar llenamos con nulls.
+                  // Al escribir en slot X, si el array es mas corto, pusheamos.
+                  // RE-ESTRATEGIA PARA MOVIMIENTOS: Mejor manipular el array de strings directamente.
+                  
+                  // Vamos a reconstruir el array exacto basado en el SlotIndex visual
+                  // Pero como guardamos CSV, es dificil mantener "huecos" vacios en el medio permanentemente sin complicar el parsing.
+                  // Simplificación: Si borras a alguien, el de abajo sube (comportamiento lista).
+                  currentPax.splice(slotIndex, 1);
+                  return { ...ass, passengers: serializePassengers(currentPax), count: currentPax.length };
+                })
+              };
+            });
+            setTargetList(newList);
+            handleChange();
+            return;
+          }
+
+          // 2. Si es agregar, buscar duplicados en TODO el cronograma del MISMO TIPO (Ida con Ida, Vuelta con Vuelta)
+          // Porque una persona puede ir y volver, pero no ir dos veces.
+          let duplicateFound = null;
+
+          targetList.forEach(t => {
+             t.assignments.forEach(a => {
+                const pax = parsePassengers(a.passengers);
+                if (pax.some(p => normalizeName(p) === normalizeName(newName))) {
+                   // Encontramos duplicado
+                   const boat = fleet.find(b => b.id === a.boatId);
+                   duplicateFound = { trip: t, assignment: a, boatName: boat ? boat.name : "Desconocida" };
+                }
+             });
+          });
+
+          if (duplicateFound) {
+             const confirmMove = confirm(
+                `⚠️ ${newName} ya está anotado/a en:\n\n` +
+                `🕒 ${duplicateFound.trip.time} hs - 🚤 ${duplicateFound.boatName}\n\n` +
+                `¿Deseas MOVERLO/A a este nuevo horario y liberar el anterior?`
+             );
+             
+             if (!confirmMove) return;
+
+             // Ejecutar Movimiento:
+             // A. Borrar del lugar viejo
+             const listAfterRemove = targetList.map(trip => {
+               if (trip.id !== duplicateFound.trip.id) return trip;
+               return {
+                 ...trip,
+                 assignments: trip.assignments.map(ass => {
+                   if (ass.id !== duplicateFound.assignment.id) return ass;
+                   const p = parsePassengers(ass.passengers).filter(name => normalizeName(name) !== normalizeName(newName));
+                   return { ...ass, passengers: serializePassengers(p), count: p.length };
+                 })
+               };
+             });
+
+             // B. Agregar al lugar nuevo (usando la lista ya modificada)
+             const listAfterAdd = listAfterRemove.map(trip => {
+               if (trip.id !== tripId) return trip;
+               return {
+                 ...trip,
+                 assignments: trip.assignments.map(ass => {
+                   if (ass.id !== assignmentId) return ass;
+                   const p = parsePassengers(ass.passengers);
+                   if (p.length < fleet.find(b=>b.id === ass.boatId).capacity) {
+                      p.push(newName); // Agregamos al final disponible
+                   } else {
+                      alert("Error: Alguien ocupó el lugar mientras confirmabas.");
+                   }
+                   return { ...ass, passengers: serializePassengers(p), count: p.length };
+                 })
+               };
+             });
+             
+             setTargetList(listAfterAdd);
+             handleChange();
+
+          } else {
+             // 3. No hay duplicados, agregar normalmente
+             const newList = targetList.map(trip => {
+               if (trip.id !== tripId) return trip;
+               return {
+                 ...trip,
+                 assignments: trip.assignments.map(ass => {
+                   if (ass.id !== assignmentId) return ass;
+                   const p = parsePassengers(ass.passengers);
+                   // Verificar capacidad real antes de agregar
+                   const boatCapacity = fleet.find(b=>b.id === ass.boatId).capacity;
+                   if (p.length >= boatCapacity) {
+                      alert("¡La lancha se llenó!");
+                      return ass;
+                   }
+                   p.push(newName);
+                   return { ...ass, passengers: serializePassengers(p), count: p.length };
+                 })
+               };
+             });
+             setTargetList(newList);
+             handleChange();
+          }
         };
 
         if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">Cargando...</div>;
@@ -538,7 +590,7 @@
                       <IconBoat className="w-5 h-5" />
                    </div>
                    <h1 className="font-bold text-lg md:text-xl text-gray-800 tracking-tight">
-                     {isReadOnly ? "Cronograma de Traslados" : "Gestor de Traslados"}
+                     {isReadOnly ? "Cronograma Público" : "Gestor de Traslados"}
                    </h1>
                 </div>
 
@@ -558,7 +610,6 @@
 
             <main className="max-w-6xl mx-auto px-4 py-8">
               
-              {/* Buscador - Visible siempre, pero más útil en lectura */}
               <div className="max-w-xl mx-auto mb-8 relative">
                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <IconSearch className="h-5 w-5 text-gray-400" />
@@ -566,13 +617,12 @@
                  <input 
                     type="text" 
                     placeholder="🔍 Buscar pasajero por nombre..." 
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                  />
               </div>
 
-              {/* Resultados de Búsqueda */}
               <SearchResults searchTerm={searchTerm} ida={scheduleIda} vuelta={scheduleVuelta} fleet={fleet} />
 
               {!isReadOnly && !searchTerm && (
@@ -586,8 +636,8 @@
                   trips={scheduleIda} 
                   setTrips={setScheduleIda} 
                   fleet={fleet}
+                  onRegisterPassenger={handleRegisterPassenger}
                   onChange={handleChange}
-                  onEditAssignment={(tripId, assign, bName) => openEditModal('ida', tripId, assign, bName)}
                   readOnly={isReadOnly}
                 />
                 <ScheduleSection 
@@ -596,19 +646,11 @@
                   trips={scheduleVuelta} 
                   setTrips={setScheduleVuelta} 
                   fleet={fleet}
+                  onRegisterPassenger={handleRegisterPassenger}
                   onChange={handleChange}
-                  onEditAssignment={(tripId, assign, bName) => openEditModal('vuelta', tripId, assign, bName)}
                   readOnly={isReadOnly}
                 />
               </div>
-
-              <EditAssignmentModal 
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
-                assignment={editingData?.assignment}
-                boatName={editingData?.boatName}
-                onSave={handleSaveAssignment}
-              />
             </main>
           </div>
         );
