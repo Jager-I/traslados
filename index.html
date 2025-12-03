@@ -36,6 +36,20 @@
       .slot-transition:hover {
         transform: translateY(-2px);
       }
+      /* Spinner para auto-guardado */
+      .spinner {
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top: 2px solid #ffffff;
+        width: 16px;
+        height: 16px;
+        -webkit-animation: spin 1s linear infinite; /* Safari */
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
     </style>
 </head>
   <body>
@@ -312,8 +326,14 @@
                            badgeColorClass = "bg-red-100 text-red-800 border-red-200"; // Rojo (Lleno)
                         }
 
-                        // Texto del badge
-                        const badgeLabel = readOnly ? "Disponibilidad" : "Ocupados";
+                        // CORRECCIÓN: Mostrar disponibilidad real en modo público
+                        const displayCount = readOnly ? remaining : assignment.count;
+                        const badgeLabel = readOnly ? "Disponibles" : "Ocupados";
+                        
+                        // En modo solo lectura, no mostramos "0/5 Disponibles" en rojo, sino "0 Disponibles" o "Agotado"
+                        // Pero para mantener formato:
+                        // Publico: "2 / 5 Disponibles"
+                        // Admin: "3 / 5 Ocupados"
 
                         return (
                           <div key={assignment.id} 
@@ -328,10 +348,10 @@
                                 <h4 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
                                   {boat.name}
                                 </h4>
-                                {/* BADGE MEJORADO */}
+                                {/* BADGE CORREGIDO */}
                                 <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mt-2 border ${badgeColorClass}`}>
                                    <IconUsers className="w-3.5 h-3.5" /> 
-                                   <span>{assignment.count} / {boat.capacity} {badgeLabel}</span>
+                                   <span>{displayCount} / {boat.capacity} {badgeLabel}</span>
                                 </div>
                               </div>
                               
@@ -466,24 +486,38 @@
 
         const handleChange = () => { setUnsavedChanges(true); };
 
-        const handleSave = async () => {
+        // Función de guardado interno (Reutilizable para auto-guardado)
+        const saveData = async (dataToSave) => {
           setIsSaving(true);
-          const payload = { id, data: { fleet, schedule: { ida: scheduleIda, vuelta: scheduleVuelta } } };
           try {
-            if (window.location.protocol === 'file:') { alert("Error: No funciona en local."); setIsSaving(false); return; }
-            const res = await fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const json = await res.json();
-            if (res.ok && json.success) {
-              setId(json.id);
-              setUnsavedChanges(false);
-              if (!id) {
-                const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?id=${json.id}`;
-                window.history.pushState({path:newUrl},'',newUrl);
-              }
-              alert("✅ Guardado!");
-            } else { alert("Error: " + (json.error || "Desconocido")); }
-          } catch (e) { alert("Error conexión"); }
+             if (window.location.protocol === 'file:') { alert("Error: Local no soporta guardado."); setIsSaving(false); return; }
+             
+             const res = await fetch('/api/schedule', { 
+               method: 'POST', 
+               headers: { 'Content-Type': 'application/json' }, 
+               body: JSON.stringify({ id: id, data: dataToSave }) 
+             });
+             
+             const json = await res.json();
+             if (res.ok && json.success) {
+                setId(json.id);
+                setUnsavedChanges(false);
+                if (!id) {
+                   const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?id=${json.id}`;
+                   window.history.pushState({path:newUrl},'',newUrl);
+                }
+             } else {
+                alert("Error al guardar cambios: " + (json.error || "Error desconocido"));
+             }
+          } catch (e) {
+             alert("Error de conexión al guardar.");
+          }
           setIsSaving(false);
+        };
+
+        const handleManualSave = () => {
+           saveData({ fleet, schedule: { ida: scheduleIda, vuelta: scheduleVuelta } });
+           alert("✅ Guardado!");
         };
 
         const handleShare = () => {
@@ -493,13 +527,22 @@
           navigator.clipboard.writeText(shareUrl).then(() => alert("📋 Link copiado!"));
         };
 
-        // LÓGICA DE REGISTRO / MOVIMIENTO
+        // LÓGICA DE REGISTRO / MOVIMIENTO CON AUTO-GUARDADO
         const handleRegisterPassenger = (type, tripId, assignmentId, slotIndex, newName) => {
           const targetList = type === 'ida' ? scheduleIda : scheduleVuelta;
           const setTargetList = type === 'ida' ? setScheduleIda : setScheduleVuelta;
 
+          const updateAndSave = (newList) => {
+             setTargetList(newList); 
+             const currentIda = type === 'ida' ? newList : scheduleIda;
+             const currentVuelta = type === 'vuelta' ? newList : scheduleVuelta;
+             saveData({ 
+                fleet, 
+                schedule: { ida: currentIda, vuelta: currentVuelta } 
+             });
+          };
+
           if (!newName) {
-            // Borrar
             const newList = targetList.map(trip => {
               if (trip.id !== tripId) return trip;
               return {
@@ -507,17 +550,15 @@
                 assignments: trip.assignments.map(ass => {
                   if (ass.id !== assignmentId) return ass;
                   const currentPax = parsePassengers(ass.passengers);
-                  currentPax.splice(slotIndex, 1); // Remover del array
+                  currentPax.splice(slotIndex, 1);
                   return { ...ass, passengers: serializePassengers(currentPax), count: currentPax.length };
                 })
               };
             });
-            setTargetList(newList);
-            handleChange();
+            updateAndSave(newList);
             return;
           }
 
-          // Verificar Duplicados
           let duplicateFound = null;
           targetList.forEach(t => {
              t.assignments.forEach(a => {
@@ -537,7 +578,6 @@
              );
              if (!confirmMove) return;
 
-             // Mover: Borrar del viejo y agregar al nuevo
              const listAfterRemove = targetList.map(trip => {
                if (trip.id !== duplicateFound.trip.id) return trip;
                return {
@@ -567,11 +607,9 @@
                  })
                };
              });
-             setTargetList(listAfterAdd);
-             handleChange();
+             updateAndSave(listAfterAdd);
 
           } else {
-             // Agregar normal
              const newList = targetList.map(trip => {
                if (trip.id !== tripId) return trip;
                return {
@@ -589,8 +627,7 @@
                  })
                };
              });
-             setTargetList(newList);
-             handleChange();
+             updateAndSave(newList);
           }
         };
 
@@ -607,11 +644,16 @@
                    <h1 className="font-bold text-lg md:text-xl text-gray-800 tracking-tight">
                      {isReadOnly ? "Cronograma Público" : "Gestor de Traslados"}
                    </h1>
+                   {isSaving && isReadOnly && (
+                      <div className="flex items-center gap-2 ml-4 bg-gray-800 text-white text-xs px-3 py-1 rounded-full animate-pulse">
+                        <div className="spinner"></div> Guardando...
+                      </div>
+                   )}
                 </div>
 
                 <div className="flex gap-2">
                    {!isReadOnly && (
-                     <button onClick={handleSave} disabled={isSaving} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${unsavedChanges ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border'}`}>
+                     <button onClick={handleManualSave} disabled={isSaving} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${unsavedChanges ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border'}`}>
                        <IconSave className="w-4 h-4" /> {isSaving ? '...' : (unsavedChanges ? 'Guardar' : 'Listo')}
                      </button>
                    )}
