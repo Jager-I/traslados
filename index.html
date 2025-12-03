@@ -237,6 +237,7 @@
         };
 
         const removeBoatFromTrip = (tripId, assignmentId) => {
+          if (!confirm("¿Seguro que deseas QUITAR esta lancha del horario? Se eliminarán todos los pasajeros asignados.")) return;
           setTrips(trips.map(t => {
             if (t.id !== tripId) return t;
             return { ...t, assignments: t.assignments.filter(a => a.id !== assignmentId) };
@@ -348,7 +349,7 @@
                                 <h4 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
                                   {boat.name}
                                 </h4>
-                                {/* BADGE CORREGIDO */}
+                                {/* BADGE MEJORADO */}
                                 <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mt-2 border ${badgeColorClass}`}>
                                    <IconUsers className="w-3.5 h-3.5" /> 
                                    <span>{displayCount} / {boat.capacity} {badgeLabel}</span>
