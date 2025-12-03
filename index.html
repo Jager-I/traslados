@@ -464,14 +464,18 @@
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("id");
             const mode = params.get("mode");
+            
             if (mode === 'view') setIsReadOnly(true);
             
             if (queryId) {
               try {
-                const res = await fetch(`/api/schedule?id=${queryId}`);
+                // Truco: Agregamos un timestamp (?t=...) para evitar que el navegador use la memoria caché vieja
+                const res = await fetch(`/api/schedule?id=${queryId}&t=${Date.now()}`);
                 if (res.ok) {
                   const data = await res.json();
                   if (data) {
+                    // Solo actualizamos si la data es diferente para no parpadear
+                    // (Aquí simplificamos seteando directo, React maneja el resto)
                     setFleet(data.fleet || []);
                     setScheduleIda(data.schedule?.ida || []);
                     setScheduleVuelta(data.schedule?.vuelta || []);
@@ -482,8 +486,35 @@
             }
             setLoading(false);
           };
+
+          // 1. Carga inicial inmediata
           loadData();
-        }, []);
+
+          // 2. Configurar el "Polling" (Actualización automática)
+          const intervalId = setInterval(() => {
+             // IMPORTANTE: Si tengo cambios sin guardar, NO actualizo para no perder mi trabajo
+             // Usamos una referencia o chequeamos el estado. 
+             // En React dentro de useEffect, el estado 'unsavedChanges' del closure inicial es siempre false.
+             // Para hacerlo bien simple sin refs complejas:
+             // Solo permitimos auto-reload si estamos en modo lectura (público) 
+             // O si hacemos un chequeo más avanzado.
+             
+             // Por seguridad: Solo actualizamos automático si es MODO LECTURA (el público)
+             // O si quieres que el admin también se actualice, debes aceptar que si está escribiendo podría interrumpirse.
+             
+             // Opción A: Solo actualiza el público (Recomendado para empezar)
+             const params = new URLSearchParams(window.location.search);
+             if (params.get("mode") === 'view') {
+                loadData();
+             }
+             
+             // Si quieres que el admin también se actualice, borra el 'if' de arriba y deja solo loadData(),
+             // pero ten cuidado al editar.
+          }, 5000); // 5000 ms = 5 segundos
+
+          // Limpieza al salir
+          return () => clearInterval(intervalId);
+        }, []); // Array vacío: esto corre solo al montar el componente
 
         const handleChange = () => { setUnsavedChanges(true); };
 
